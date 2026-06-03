@@ -12,8 +12,9 @@ A probabilistic discrete-event simulation of a multi-tier support center with:
   <img src="https://github.com/user-attachments/assets/dd09e3e4-26ce-4040-8581-73a38be1e06e" width="600"/>
 </p>
 
-## What This Project Includes
 
+## What This Project Includes
+## **[View Live Demo](https://multi-tier-call-center-simulation.onrender.com/)** 👁️
 - Scenario-based call center simulation with Monte Carlo replications
 - API endpoints to run simulations and fetch metrics/results
 - Dashboard scaffold for scenario comparison and run history
