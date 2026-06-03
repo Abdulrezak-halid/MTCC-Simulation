@@ -64,3 +64,21 @@ Run API persistence and schema tests:
 source .venv/bin/activate
 python3 -m unittest discover -s tests
 ```
+
+## Docker Deployment
+
+Build and run the full app in one container:
+
+```bash
+docker compose up --build
+```
+
+Then open:
+
+- Dashboard: http://127.0.0.1:8000
+- API docs: http://127.0.0.1:8000/docs
+- Health: http://127.0.0.1:8000/api/health
+
+The Docker image builds the React dashboard first, copies the static files into the Python image, and serves everything through FastAPI. The API is available at both the original root endpoints and `/api/...`; the production dashboard uses `/api` automatically.
+
+For single-service hosting on Render, Railway, Fly.io, or a similar platform, deploy this repository as a Docker app and expose port `8000`. If the platform injects a `PORT` environment variable, the container command will use it.

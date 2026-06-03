@@ -10,6 +10,8 @@ from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -39,6 +41,8 @@ FALLBACK_RESULTS_PATH = ROOT_DIR / "simulation" / "simulation" / "results" / "la
 ENV_RESULTS_KEY = "CALLCENTER_RESULTS_PATH"
 HISTORY_DIR = ROOT_DIR / "simulation" / "results" / "runs"
 HISTORY_INDEX_PATH = ROOT_DIR / "simulation" / "results" / "runs_index.json"
+DASHBOARD_DIST_DIR = ROOT_DIR / "dashboard" / "dist"
+DASHBOARD_INDEX_PATH = DASHBOARD_DIST_DIR / "index.html"
 
 
 class RunSimulationRequest(BaseModel):
@@ -174,11 +178,13 @@ def _read_exported_payload(path_override: str | None = None) -> tuple[dict[str, 
 
 
 @app.get("/health")
+@app.get("/api/health", include_in_schema=False)
 def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
 @app.post("/run-simulation", response_model=RunSimulationResponse)
+@app.post("/api/run-simulation", response_model=RunSimulationResponse, include_in_schema=False)
 def run_simulation(request: RunSimulationRequest) -> RunSimulationResponse:
     scenario_ids = _normalize_scenarios(request.scenario)
     payload = run_scenarios(
@@ -206,6 +212,7 @@ def run_simulation(request: RunSimulationRequest) -> RunSimulationResponse:
 
 
 @app.get("/compare-scenarios")
+@app.get("/api/compare-scenarios", include_in_schema=False)
 def compare_scenarios(results_path: str | None = Query(default=None)) -> dict[str, Any]:
     payload, source_path = _read_exported_payload(results_path)
     return {
@@ -216,6 +223,7 @@ def compare_scenarios(results_path: str | None = Query(default=None)) -> dict[st
 
 
 @app.get("/get-metrics")
+@app.get("/api/get-metrics", include_in_schema=False)
 def get_metrics(
     scenario_id: str | None = Query(default=None, description="Optional scenario id filter."),
     results_path: str | None = Query(default=None),
@@ -256,6 +264,7 @@ def get_metrics(
 
 
 @app.get("/runs", response_model=list[RunRecord])
+@app.get("/api/runs", response_model=list[RunRecord], include_in_schema=False)
 def list_runs(limit: int | None = Query(default=None, ge=1)) -> list[RunRecord]:
     if not isinstance(limit, int):
         limit = None
@@ -267,6 +276,7 @@ def list_runs(limit: int | None = Query(default=None, ge=1)) -> list[RunRecord]:
 
 
 @app.get("/runs/{run_id}")
+@app.get("/api/runs/{run_id}", include_in_schema=False)
 def get_run(run_id: str) -> dict[str, Any]:
     history = _load_history_index()
     record = next((entry for entry in history if entry.get("run_id") == run_id), None)
@@ -283,3 +293,21 @@ def get_run(run_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Invalid run JSON: {exc}") from exc
 
     return {"record": record, "payload": payload}
+
+
+if DASHBOARD_DIST_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=DASHBOARD_DIST_DIR / "assets"), name="dashboard-assets")
+
+
+@app.get("/{full_path:path}", include_in_schema=False)
+def serve_dashboard(full_path: str) -> FileResponse:
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="API route not found.")
+
+    if not DASHBOARD_INDEX_PATH.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Dashboard build not found. Run `npm run build` in dashboard or build the Docker image.",
+        )
+
+    return FileResponse(DASHBOARD_INDEX_PATH)
