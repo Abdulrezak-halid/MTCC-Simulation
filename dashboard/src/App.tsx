@@ -10,7 +10,7 @@ import {
   YAxis,
 } from "recharts";
 import { useDashboardStore } from "./store/useDashboardStore";
-import type { HistoricalRunPayload, RunRecord } from "./types";
+import type { ComparisonRow, HistoricalRunPayload, RunRecord } from "./types";
 
 const scenarioPalette = [
   "#22d3ee",
@@ -69,6 +69,7 @@ export default function App() {
     error,
     loadAll,
     selectRun,
+    generateRun,
     selectedRunId,
   } = useDashboardStore();
 
@@ -77,12 +78,20 @@ export default function App() {
   }, [loadAll]);
 
   const selectedScenarioId =
-    activeRun?.payload.scenarios[0]?.scenario.scenario_id;
+    activeRun?.payload.scenarios[0]?.scenario.scenario_id ??
+    comparison[0]?.scenario_id;
   const selectedScenario = activeRun?.payload.scenarios.find(
     (scenario: HistoricalRunPayload["payload"]["scenarios"][number]) =>
       scenario.scenario.scenario_id === selectedScenarioId,
   );
-  const kpis = selectedScenario?.aggregates.kpis ?? {};
+  const selectedComparison = comparison.find(
+    (scenario: ComparisonRow) => scenario.scenario_id === selectedScenarioId,
+  );
+  const kpis = selectedScenario?.aggregates.kpis ?? selectedComparison ?? {};
+  const selectedScenarioName =
+    selectedScenario?.scenario.name ??
+    selectedComparison?.scenario_name ??
+    "No scenario selected";
 
   return (
     <div className="shell">
@@ -98,12 +107,12 @@ export default function App() {
         <div className="hero-card">
           <div className="hero-card-title">Current run</div>
           <div className="hero-card-value">
-            {activeRun ? formatRunLabel(activeRun.record) : "No run selected"}
+            {activeRun ? formatRunLabel(activeRun.record) : "Latest exported results"}
           </div>
           <div className="hero-card-subtitle">
             {activeRun
               ? `ID: ${formatRunShortId(activeRun.record.run_id)}`
-              : "Load a run to inspect metrics"}
+              : "Generate a run to save a historical snapshot"}
           </div>
         </div>
       </header>
@@ -156,6 +165,11 @@ export default function App() {
             <span>{runs.length} saved</span>
           </div>
           <div className="run-list">
+            {runs.length === 0 ? (
+              <div className="empty-state">
+                No saved runs yet. Generate a run to create the first snapshot.
+              </div>
+            ) : null}
             {runs.map((run) => (
               <button
                 key={run.run_id}
@@ -186,7 +200,11 @@ export default function App() {
               <select
                 value={selectedRunId ?? ""}
                 onChange={(event) => void selectRun(event.target.value)}
+                disabled={runs.length === 0 || loading}
               >
+                {runs.length === 0 ? (
+                  <option value="">No saved runs yet</option>
+                ) : null}
                 {runs.map((run) => (
                   <option key={run.run_id} value={run.run_id}>
                     {formatDateTime(run.generated_at)} UTC · seed{" "}
@@ -195,6 +213,14 @@ export default function App() {
                 ))}
               </select>
             </label>
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => void generateRun()}
+              disabled={loading}
+            >
+              {loading ? "Running simulation..." : "Generate run"}
+            </button>
             <label>
               <span>API status</span>
               <input value={error ?? "Connected to API contract"} readOnly />
@@ -205,11 +231,7 @@ export default function App() {
         <section className="panel panel-kpi">
           <div className="panel-header">
             <h2>KPI snapshot</h2>
-            <span>
-              {selectedScenario
-                ? selectedScenario.scenario.name
-                : "No scenario selected"}
-            </span>
+            <span>{selectedScenarioName}</span>
           </div>
           <div className="kpi-grid">
             <article className="kpi-card">

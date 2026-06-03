@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { ComparisonRow, HistoricalRunPayload, RunRecord } from '../types';
-import { fetchComparison, fetchRun, fetchRuns } from '../lib/api';
+import { createSimulationRun, fetchComparison, fetchRun, fetchRuns } from '../lib/api';
 
 type DashboardState = {
   comparison: ComparisonRow[];
@@ -11,6 +11,7 @@ type DashboardState = {
   error?: string;
   loadAll: () => Promise<void>;
   selectRun: (runId: string) => Promise<void>;
+  generateRun: () => Promise<void>;
 };
 
 export const useDashboardStore = create<DashboardState>((set, get) => ({
@@ -31,12 +32,35 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     }
   },
   selectRun: async (runId: string) => {
+    if (!runId) {
+      return;
+    }
+
     set({ loading: true, error: undefined, selectedRunId: runId });
     try {
       const activeRun = await fetchRun(runId);
       set({ activeRun, loading: false });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to load run', loading: false });
+    }
+  },
+  generateRun: async () => {
+    set({ loading: true, error: undefined });
+    try {
+      const createdRun = await createSimulationRun();
+      const [comparison, runs] = await Promise.all([fetchComparison(), fetchRuns()]);
+      const selectedRunId = createdRun.run_id ?? runs[0]?.run_id;
+      set({ comparison, runs, selectedRunId });
+
+      if (selectedRunId) {
+        const activeRun = await fetchRun(selectedRunId);
+        set({ activeRun, loading: false });
+        return;
+      }
+
+      set({ loading: false });
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to run simulation', loading: false });
     }
   },
 }));
