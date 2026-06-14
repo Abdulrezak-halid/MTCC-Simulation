@@ -23,6 +23,27 @@ const scenarioPalette = [
   "#38bdf8",
 ];
 
+const simulationSteps = [
+  {
+    title: "Choose a scenario",
+    text: "Each run compares operating conditions such as normal demand, peak load, reduced staffing, more VIP callers, or faster staff handling.",
+  },
+  {
+    title: "Simulate caller flow",
+    text: "Calls arrive over the workday, pass through IVR, wait for Tier 1, and either get resolved, abandon the queue, or escalate to Tier 2.",
+  },
+  {
+    title: "Read the outcome",
+    text: "The dashboard turns every run into KPIs: average wait, SLA compliance, agent utilization, abandonment, and scenario-to-scenario comparison.",
+  },
+];
+
+const userActions = [
+  "Press Generate run to create a new simulation snapshot from the API.",
+  "Select a saved run to inspect previous results without opening raw JSON.",
+  "Compare scenarios to decide which staffing or demand condition performs best.",
+];
+
 function formatDateTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -118,6 +139,39 @@ export default function App() {
       </header>
 
       <main className="grid">
+        <section className="panel panel-instructions">
+          <div className="panel-header">
+            <h2>How the simulation works</h2>
+            <span>Project guide</span>
+          </div>
+          <div className="instructions-layout">
+            <div>
+              <p className="instructions-intro">
+                This project models a multi-tier call center so you can test how
+                demand, staffing, VIP priority, and service efficiency affect
+                customer waiting time and service quality.
+              </p>
+              <div className="step-grid">
+                {simulationSteps.map((step, index) => (
+                  <article className="step-card" key={step.title}>
+                    <span className="step-index">{index + 1}</span>
+                    <h3>{step.title}</h3>
+                    <p>{step.text}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+            <aside className="visitor-guide">
+              <h3>What you do here</h3>
+              <ul>
+                {userActions.map((action) => (
+                  <li key={action}>{action}</li>
+                ))}
+              </ul>
+            </aside>
+          </div>
+        </section>
+
         <section className="panel panel-comparison">
           <div className="panel-header">
             <h2>Scenario comparison</h2>
